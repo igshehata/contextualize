@@ -13,9 +13,24 @@ export type BashPermission = "ask" | "allow" | "deny"
 export type BashRules = Record<string, BashPermission>
 
 /** Domains the kit contributes at runtime. Used as keys for the opt-out switch. */
-export type Domain = "mcp" | "permissions" | "clis" | "skills" | "lsp"
+export type Domain = "mcp" | "permissions" | "clis" | "skills" | "lsp" | "context" | "agents" | "review"
 
-export const DOMAINS: readonly Domain[] = ["mcp", "permissions", "clis", "skills", "lsp"] as const
+export const DOMAINS: readonly Domain[] = [
+  "mcp",
+  "permissions",
+  "clis",
+  "skills",
+  "lsp",
+  "context",
+  "agents",
+  "review",
+] as const
+
+/** A single command definition. */
+export type CommandDef = NonNullable<Config["command"]>[string]
+
+/** A single agent definition. */
+export type AgentDef = NonNullable<Config["agent"]>[string]
 
 /**
  * Environment-specific values the runtime adapter resolves (from its own install
@@ -24,4 +39,6 @@ export const DOMAINS: readonly Domain[] = ["mcp", "permissions", "clis", "skills
 export interface RuntimeContext {
   /** Absolute path to the plugin's bundled skills directory. */
   readonly skillsDir: string
+  /** Bundled agents (build/plan/review), loaded from `<pkg>/agents/*.md`. */
+  readonly agents: Record<string, AgentDef>
 }

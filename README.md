@@ -56,7 +56,27 @@ Disable any runtime domain per machine/project, without removing the plugin:
 export CONTEXTUALIZE_DISABLE="mcp,clis"
 ```
 
-Valid domains: `mcp`, `permissions`, `clis`, `skills`, `lsp`.
+Valid domains: `mcp`, `permissions`, `clis`, `skills`, `lsp`, `context`, `agents`, `review`.
+
+## Agents & code review
+
+- **`build` / `plan`** (`agents` domain) — opinionated implementation and planning agents (plan → execute → verify, strict scope discipline).
+- **`review`** (`review` domain) — a deterministic code-review subagent + `/review` command. Two tools (`review_context`, `review_worktree`) resolve the review branch/target, set up an isolated worktree when needed, and route context. It loads the **`contextualize`** skill (your project facts from `.agent/context`), **`code-reviewer`**, and `vercel-react-best-practices` (frontend only).
+
+`/review` · `/review feat/branch` · `/review branch=feat/x target=develop features=a,b`.
+
+> The `code-reviewer` skill is expected to be present separately (it's not bundled here). The `contextualize` skill that the review loads for project context **is** bundled — it reads `.agent/context`, so review and the context engine share one source of truth.
+
+## Project context engine
+
+A git-native, **facts-only** project context for agents — brownfield-first: it tells you *what is true now*, derived from the code, instead of making you write specs. Progressive (loads only when you switch to the `develop` agent, then lazily) and team/multi-session safe (facts are committed; git is the shared memory).
+
+- **`develop`** (primary agent) — does dev work grounded in the facts; switch to it when working in a project.
+- **`track`** (subagent) — keeps `.agent/context/**` true from `git diff`, or files a fact you hand it.
+- **`/ctx-init`** extract/scaffold · **`/ctx-sync`** reconcile to HEAD · **`/ctx <fact>`** capture a fact, auto-routed.
+- On session start, if the facts are behind the code you get a toast nudging `/ctx-sync` (notify only — syncing is opt-in).
+
+Facts live in `.agent/context/` (`brief.md`, `map.md`, `core/`, `features/`) — plain markdown, tool-agnostic, so other tools (spec-kit, CI, …) can mount on it. See [docs/context-engine.md](docs/context-engine.md).
 
 ## Development
 

@@ -4,7 +4,11 @@ import type { Settings } from "./options"
 import { mcp } from "./content/mcp"
 import { bash } from "./content/permissions"
 import { cliPermissions } from "./content/clis"
+import { agents as contextAgents } from "../context/agents"
+import { commands as contextCommands } from "../context/commands"
+import { commands as reviewCommands } from "../review/command"
 import { mergeAbsent } from "./merge"
+import type { AgentDef } from "./types"
 
 /** What the kit actually contributed to a given config, per domain. */
 export interface AppliedPlan {
@@ -13,6 +17,9 @@ export interface AppliedPlan {
   readonly clis: readonly string[]
   readonly skills: readonly string[]
   readonly lsp: boolean
+  readonly context: { readonly agents: readonly string[]; readonly commands: readonly string[] }
+  readonly agents: readonly string[]
+  readonly review: { readonly agents: readonly string[]; readonly commands: readonly string[] }
 }
 
 /** `config.skills` isn't in the published Config type yet, though the runtime reads it. */
@@ -64,6 +71,63 @@ const registerSkills = (
     return [ctx.skillsDir]
   })
 
+const registerContext = (
+  config: OpencodeConfig,
+  settings: Settings,
+): Effect.Effect<{ agents: readonly string[]; commands: readonly string[] }> =>
+  Effect.sync(() => {
+    if (settings.disabled.has("context")) return { agents: [], commands: [] }
+    const agentBag = (config.agent ??= {})
+    const addedAgents = mergeAbsent(agentBag, contextAgents, (key, value) => {
+      agentBag[key] = value
+    })
+    const commandBag = (config.command ??= {})
+    const addedCommands = mergeAbsent(commandBag, contextCommands, (key, value) => {
+      commandBag[key] = value
+    })
+    return { agents: addedAgents, commands: addedCommands }
+  })
+
+const pick = (source: Record<string, AgentDef>, names: readonly string[]): Record<string, AgentDef> => {
+  const out: Record<string, AgentDef> = {}
+  for (const name of names) {
+    const def = source[name]
+    if (def) out[name] = def
+  }
+  return out
+}
+
+const registerDevAgents = (
+  config: OpencodeConfig,
+  settings: Settings,
+  ctx: RuntimeContext,
+): Effect.Effect<readonly string[]> =>
+  Effect.sync(() => {
+    if (settings.disabled.has("agents")) return []
+    const bag = (config.agent ??= {})
+    return mergeAbsent(bag, pick(ctx.agents, ["build", "plan"]), (key, value) => {
+      bag[key] = value
+    })
+  })
+
+const registerReview = (
+  config: OpencodeConfig,
+  settings: Settings,
+  ctx: RuntimeContext,
+): Effect.Effect<{ agents: readonly string[]; commands: readonly string[] }> =>
+  Effect.sync(() => {
+    if (settings.disabled.has("review")) return { agents: [], commands: [] }
+    const agentBag = (config.agent ??= {})
+    const addedAgents = mergeAbsent(agentBag, pick(ctx.agents, ["review"]), (key, value) => {
+      agentBag[key] = value
+    })
+    const commandBag = (config.command ??= {})
+    const addedCommands = mergeAbsent(commandBag, reviewCommands, (key, value) => {
+      commandBag[key] = value
+    })
+    return { agents: addedAgents, commands: addedCommands }
+  })
+
 const registerLsp = (config: OpencodeConfig, settings: Settings): Effect.Effect<boolean> =>
   Effect.sync(() => {
     if (settings.disabled.has("lsp")) return false
@@ -92,11 +156,17 @@ export const applyConfig = (
     const addedClis = yield* registerClis(config, settings)
     const addedSkills = yield* registerSkills(config, settings, ctx)
     const addedLsp = yield* registerLsp(config, settings)
+    const addedContext = yield* registerContext(config, settings)
+    const addedDevAgents = yield* registerDevAgents(config, settings, ctx)
+    const addedReview = yield* registerReview(config, settings, ctx)
     return {
       mcp: addedMcp,
       permissions: addedPermissions,
       clis: addedClis,
       skills: addedSkills,
       lsp: addedLsp,
+      context: addedContext,
+      agents: addedDevAgents,
+      review: addedReview,
     }
   })

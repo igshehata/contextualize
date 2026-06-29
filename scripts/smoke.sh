@@ -51,6 +51,13 @@ check "mcp: sequential-thinking"  "sequential-thinking" "$OUT"
 check "permissions: rm -rf deny"  "rm -rf"             "$OUT"
 check "clis: agent-browser allow" "agent-browser"      "$OUT"
 check "lsp: true"                 '"lsp": true'        "$OUT"
+check "context: develop agent"    "develop"            "$OUT"
+check "context: track agent"      "track"              "$OUT"
+check "context: /ctx-sync command" "ctx-sync"          "$OUT"
+check "agent: build"   "Universal implementation agent" "$OUT"
+check "agent: plan"    "Universal planning agent"       "$OUT"
+check "agent: review"  "deterministic setup"            "$OUT"
+check "command: /review" "Review the current worktree or an explicit branch against develop" "$OUT"
 
 # Skills are discovered from config.skills.paths — verify via the skill index.
 SKILLS_OUT="$(
@@ -59,7 +66,8 @@ SKILLS_OUT="$(
     XDG_STATE_HOME="$TMP/state" XDG_CACHE_HOME="$TMP/cache" \
     opencode debug skill 2>&1
 )" || { echo "✗ opencode debug skill failed:"; echo "$SKILLS_OUT" | tail -20; exit 1; }
-check "skill: contextualize-test discovered" "contextualize-test" "$SKILLS_OUT"
+check "skill: contextualize discovered"       "contextualize"       "$SKILLS_OUT"
+check "skill: context-engineering discovered" "context-engineering" "$SKILLS_OUT"
 
 if [[ "$fail" -ne 0 ]]; then
   echo "--- resolved config (tail) ---" >&2

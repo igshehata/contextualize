@@ -9,7 +9,14 @@ import type { OpencodeConfig, RuntimeContext } from "../src/core/types"
 
 const run = <A>(e: Effect.Effect<A>) => Effect.runSync(e)
 const settings = (opts?: Record<string, unknown>) => run(parseSettings(opts))
-const ctx: RuntimeContext = { skillsDir: "/abs/pkg/skills" }
+const ctx: RuntimeContext = {
+  skillsDir: "/abs/pkg/skills",
+  agents: {
+    build: { mode: "all", prompt: "build" },
+    plan: { mode: "all", prompt: "plan" },
+    review: { mode: "subagent", prompt: "review" },
+  },
+}
 const apply = (config: OpencodeConfig, opts?: Record<string, unknown>) =>
   run(applyConfig(config, settings(opts), ctx))
 
@@ -83,6 +90,55 @@ describe("lsp", () => {
     const config = { lsp: false } as unknown as OpencodeConfig
     expect(apply(config).lsp).toBe(false)
     expect((config as { lsp?: unknown }).lsp).toBe(false)
+  })
+})
+
+describe("context engine", () => {
+  test("injects develop + track agents and ctx commands", () => {
+    const config: OpencodeConfig = {}
+    const applied = apply(config)
+    expect(applied.context.agents).toContain("develop")
+    expect(applied.context.agents).toContain("track")
+    expect(applied.context.commands).toContain("ctx-sync")
+    expect(config.agent?.["develop"]?.mode).toBe("primary")
+    expect(config.agent?.["track"]?.mode).toBe("subagent")
+  })
+
+  test("never overrides a consumer's own agent of the same name", () => {
+    const mine = { mode: "primary", prompt: "mine" } as const
+    const config: OpencodeConfig = { agent: { develop: mine } }
+    const applied = apply(config)
+    expect(applied.context.agents).not.toContain("develop")
+    expect(config.agent?.["develop"]).toBe(mine)
+  })
+
+  test("disable skips agents and commands", () => {
+    const config: OpencodeConfig = {}
+    const applied = apply(config, { disable: ["context"] })
+    expect(applied.context.agents).toEqual([])
+    expect(config.agent?.["develop"]).toBeUndefined()
+  })
+})
+
+describe("dev agents + review", () => {
+  test("injects build/plan agents and the review agent + command", () => {
+    const config: OpencodeConfig = {}
+    const applied = apply(config)
+    expect(applied.agents).toEqual(["build", "plan"])
+    expect(applied.review.agents).toEqual(["review"])
+    expect(applied.review.commands).toContain("review")
+    expect(config.agent?.["build"]).toBeDefined()
+    expect(config.agent?.["review"]).toBeDefined()
+    expect(config.command?.["review"]?.agent).toBe("review")
+  })
+
+  test("disabling 'agents' and 'review' skips them", () => {
+    const config: OpencodeConfig = {}
+    const applied = apply(config, { disable: ["agents", "review"] })
+    expect(applied.agents).toEqual([])
+    expect(applied.review.agents).toEqual([])
+    expect(config.agent?.["build"]).toBeUndefined()
+    expect(config.command?.["review"]).toBeUndefined()
   })
 })
 
