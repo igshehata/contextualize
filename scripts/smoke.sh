@@ -41,19 +41,32 @@ OUT="$(
 )" || { echo "✗ opencode debug config failed:"; echo "$OUT" | tail -20; exit 1; }
 
 fail=0
-for needle in "context7" "sequential-thinking" "rm -rf"; do
-  if grep -q "$needle" <<<"$OUT"; then
-    echo "✓ injected: $needle"
-  else
-    echo "✗ missing:  $needle"
-    fail=1
-  fi
-done
+check() { # <label> <needle> <haystack>
+  if grep -qF "$2" <<<"$3"; then echo "✓ $1"; else echo "✗ $1 (missing: $2)"; fail=1; fi
+}
+
+# Resolved config: MCPs, permissions, clis, lsp.
+check "mcp: context7"             "context7"            "$OUT"
+check "mcp: sequential-thinking"  "sequential-thinking" "$OUT"
+check "permissions: rm -rf deny"  "rm -rf"             "$OUT"
+check "clis: agent-browser allow" "agent-browser"      "$OUT"
+check "lsp: true"                 '"lsp": true'        "$OUT"
+
+# Skills are discovered from config.skills.paths — verify via the skill index.
+SKILLS_OUT="$(
+  cd "$TMP" && perl -e 'alarm shift; exec @ARGV' 90 env \
+    XDG_DATA_HOME="$TMP/data" XDG_CONFIG_HOME="$TMP/config" \
+    XDG_STATE_HOME="$TMP/state" XDG_CACHE_HOME="$TMP/cache" \
+    opencode debug skill 2>&1
+)" || { echo "✗ opencode debug skill failed:"; echo "$SKILLS_OUT" | tail -20; exit 1; }
+check "skill: contextualize-test discovered" "contextualize-test" "$SKILLS_OUT"
 
 if [[ "$fail" -ne 0 ]]; then
   echo "--- resolved config (tail) ---" >&2
   echo "$OUT" | tail -40 >&2
+  echo "--- skills (tail) ---" >&2
+  echo "$SKILLS_OUT" | tail -20 >&2
   exit 1
 fi
 
-echo "PASS — contextualize loads in opencode and injects its kit"
+echo "PASS — contextualize loads in opencode and injects its full kit"
