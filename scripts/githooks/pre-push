@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Local quality gate — runs before every `git push`.
+# Wire it up with: mise run setup   (sets core.hooksPath to scripts/githooks)
+set -euo pipefail
+
+echo "→ pre-push: running quality gate (mise run check)"
+mise run check

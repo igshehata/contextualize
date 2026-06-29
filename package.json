@@ -1,0 +1,66 @@
+{
+  "name": "contextualize",
+  "version": "0.1.0",
+  "description": "A distributable, Effect-native opencode plugin that houses a curated agent kit — skills, agents, commands, and integrations in one install.",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "ai",
+    "agent",
+    "effect"
+  ],
+  "license": "Apache-2.0",
+  "author": "Islam Shehata",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/igshehata/contextualize.git"
+  },
+  "homepage": "https://github.com/igshehata/contextualize#readme",
+  "bugs": {
+    "url": "https://github.com/igshehata/contextualize/issues"
+  },
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./server": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "prepublishOnly": "bun run check"
+  },
+  "dependencies": {
+    "effect": "^3.12.0"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.17.10 <2"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "1.17.10",
+    "@opencode-ai/sdk": "1.17.10",
+    "@types/node": "^22.10.0",
+    "oxlint": "^1.71.0",
+    "tsdown": "^0.22.3",
+    "typescript": "^5.7.0"
+  }
+}
